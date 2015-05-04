@@ -14,5 +14,7 @@ SPIDER_MODULES = ['crawler.spiders']
 NEWSPIDER_MODULE = 'crawler.spiders'
 ITEM_PIPELINES = {'crawler.pipelines.CheckDouble': 1}
 
+DB = '/Users/willem/dev/crawler/crawler.sqlite3'
+
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'crawler (+http://www.yourdomain.com)'
