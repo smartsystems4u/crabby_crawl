@@ -7,19 +7,9 @@ from scrapy import Spider, Item, Field
 from scrapy.mail import MailSender
 from scrapy.utils.project import get_project_settings
 
-mailer = MailSender(smtphost="smtp.gmail.com", mailfrom="crawler", smtpuser="wvandoesburg@gmail.com",
-smtppass="\"Y7RS/cX1$&Admq:q#'X6V!k,", smtpport=465, smtptls=True, smtpssl=True)
-
-#TODO: put this input in a config file
-#productsearchlist = ['dremel', 'fpga', 'pcb mill']
-#base_urls = ['http://www.marktplaats.nl/z.html?query=',
-#             'http://www.ebay.nl/sch/i.html?_nkw=']
-#marktplaats_description_xpath = "//span[@class='mp-listing-title']/@title"
-#marktplaats_price_xpath = "//div[@class='price-new ellipsis']/text()"
-#marktplaats_date_xpath="//div[@class='date']/text()"
-#marktplaats_url_xpath="//a[@class='juiceless-link description']/@href"
-#marktplaats_url_xpath="//h2/a/@href"
-
+#Enter your mail settings below!
+mailer = MailSender(smtphost="<your smtp server>", mailfrom="crawler", smtpuser="<your email username>",
+smtppass="<your email passwd>", smtpport=465, smtptls=True, smtpssl=True)
 
 class Product(Item):
     description = Field()
@@ -27,6 +17,8 @@ class Product(Item):
     price = Field()
     date_posted = Field()
     hashtag = Field()
+    objective_id = Field()
+    url_id = Field()
 
 class ProductSpider(Spider):
     name = 'productspider'
@@ -43,15 +35,13 @@ class ProductSpider(Spider):
             print 'added: ' + site["url"] + product["search_terms"] 
     db_con.close()
 
-
+# Enter the mail recipient to which you want to mail the results!
     def mail_results(self, url, items):
-        mailer.send(to='wvandoesburg@gmail.com', subject='crawler results: ' +
+        mailer.send(to='<mail recipient here>', subject='crawler results: ' +
                 datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + " " + url, body=str(items) )
 
-#this parser is marktplaats specific, TODO; generalize this code so we can call specific parsers for each start_url
-#this parser retrieves items, next step is to select only items of interest
     def parse(self, response):
-        #check which urls match the reponse url (contains)
+        #check which urls match the response url (contains)
         #get parsers for matching url
         db_con = lite.connect(self.settings.get('DB'))
         db_con.row_factory = lite.Row
@@ -67,12 +57,17 @@ class ProductSpider(Spider):
         cur = db_con.execute("select * from Parser where url = ?", str(url_id))
         parser = cur.fetchone()
 
+        search_terms = response.url.rpartition('=')[2]
+        print 'terms: ' + search_terms
+        cur = db_con.execute("select * from objective where search_terms = ?", (search_terms,))
+        objective_id = cur.fetchone()["id"]
+
         description_xpath = parser["description"]
         price_xpath = parser["price"]
         url_xpath = parser["item_url"]
         date_posted_xpath = parser["date_posted"]
         subselector = parser["subselector"]
-
+        
 
 # determine if a sub selector is necessary
         sub_selectors = response.xpath(subselector)
@@ -82,11 +77,15 @@ class ProductSpider(Spider):
             returnitem['description'] = sel.select( "." + description_xpath).extract()
             returnitem['price'] = ''.join(sel.select("." + price_xpath).extract()).encode('ascii', errors='ignore').strip()
             returnitem['url'] = sel.select("." + url_xpath).extract()
+            returnitem['url_id'] = int(url_id)
+            returnitem['objective_id'] = int(objective_id)
             if date_posted_xpath is not None:
                 returnitem['date_posted'] = sel.select("." + date_posted_xpath).extract()[0].strip()
+            else:
+                returnitem['date_posted'] = ""
 
             items.append(returnitem)
-#        if len(items) > 0:
-#            self.mail_results(response.url, items)
+        if len(items) > 0:
+            self.mail_results(response.url, items)
         db_con.close()
         return items
