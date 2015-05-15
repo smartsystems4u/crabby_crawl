@@ -12,6 +12,6 @@ This overview sketches the architecture of crabby_crawl. All the important param
 * Parsers: Each url has it's own xpath patterns that yield product desciptions, prices, etc.
 * Criteria: Each objective is associated with criteria upon which each result is assigned a score. The criteria are simple python statements and therefore incredibly expressive (use with care).
 
-Current objectives:
+*Current objectives:*
 - Create the criteria / scoring system
 - Create a search term recommender that learns which missing keywords can improve the average score of search results
